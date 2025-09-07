@@ -1,0 +1,22 @@
+{
+  "name": "ap2-cobertura-de-codigo",
+  "version": "1.0.0",
+  "description": "Atividade prática de cobertura de código com Jest",
+  "main": "src/order.js",
+  "scripts": {
+    "test": "jest --coverage"
+  },
+  "jest": {
+    "coverageThreshold": {
+      "global": {
+        "branches": 100,
+        "functions": 100,
+        "lines": 100,
+        "statements": 100
+      }
+    }
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  }
+}
