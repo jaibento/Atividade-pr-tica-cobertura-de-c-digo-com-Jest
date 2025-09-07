@@ -1,64 +1,70 @@
-// order.js
+const { Order, Item } = require('../src/order');
 
-// Simula um pedido de um cliente
-class Order {
-  constructor(id, items = [], paymentMethod = "cash") {
-    this.id = id;
-    this.items = items;
-    this.paymentMethod = paymentMethod;
-    this.status = "created"; // created, paid, completed, cancelled
-    this.total = this.calculateTotal();
-  }
+describe('Item', () => {
+    test('creates an item with id, name, and price', () => {
+        const item = new Item(1, 'Pizza', 25.50);
+        expect(item).toEqual({ id: 1, name: 'Pizza', price: 25.50 });
+    });
+});
 
-  // Calcula o valor total do pedido
-  calculateTotal() {
-    return this.items.reduce((total, item) => total + item.price, 0);
-  }
+describe('Order', () => {
+    let item1, item2, item3;
 
-  // Adiciona um item ao pedido
-  addItem(item) {
-    this.items.push(item);
-    this.total = this.calculateTotal();
-  }
+    beforeEach(() => {
+        item1 = new Item(1, 'Pizza', 25.50);
+        item2 = new Item(2, 'Burger', 15.00);
+        item3 = new Item(3, 'Soda', 5.00);
+    });
 
-  // Remove um item do pedido
-  removeItem(itemId) {
-    this.items = this.items.filter(item => item.id !== itemId);
-    this.total = this.calculateTotal();
-  }
+    test('constructor handles default and custom parameters', () => {
+        const order1 = new Order(1);
+        expect(order1).toMatchObject({ id: 1, items: [], paymentMethod: 'cash', status: 'created', total: 0 });
 
-  // Marca o pedido como pago
-  pay() {
-    if (this.status !== "created") {
-      throw new Error("Order cannot be paid");
-    }
-    this.status = "paid";
-  }
+        const order2 = new Order(2, [item1, item2], 'credit_card');
+        expect(order2).toMatchObject({ id: 2, items: [item1, item2], paymentMethod: 'credit_card', status: 'created', total: 40.50 });
+    });
 
-  // Marca o pedido como completado
-  complete() {
-    if (this.status !== "paid") {
-      throw new Error("Order must be paid before it can be completed");
-    }
-    this.status = "completed";
-  }
+    test.each([
+        { items: [], expectedTotal: 0 },
+        { items: [item1, item2, item3], expectedTotal: 45.50 }
+    ])('calculateTotal returns correct total for %o', ({ items, expectedTotal }) => {
+        const order = new Order(1, items);
+        expect(order.calculateTotal()).toBe(expectedTotal);
+    });
 
-  // Cancela o pedido
-  cancel() {
-    if (this.status === "completed") {
-      throw new Error("Completed order cannot be cancelled");
-    }
-    this.status = "cancelled";
-  }
-}
+    test('addItem updates items and total', () => {
+        const order = new Order(1);
+        order.addItem(item1);
+        order.addItem(item2);
+        expect(order.items).toEqual([item1, item2]);
+        expect(order.total).toBe(40.50);
+    });
 
-// Item para os pedidos
-class Item {
-  constructor(id, name, price) {
-    this.id = id;
-    this.name = name;
-    this.price = price;
-  }
-}
+    test('removeItem works correctly', () => {
+        const order = new Order(1, [item1, item2, item3]);
+        order.removeItem(2);
+        expect(order.items).toEqual([item1, item3]);
+        expect(order.total).toBe(30.50);
 
-module.exports = { Order, Item };
+        // Removing non-existent item
+        order.removeItem(999);
+        expect(order.items).toEqual([item1, item3]);
+    });
+
+    test.each([
+        { initialStatus: 'created', action: 'pay', expectedStatus: 'paid' },
+        { initialStatus: 'paid', action: 'complete', expectedStatus: 'completed' },
+        { initialStatus: 'created', action: 'cancel', expectedStatus: 'cancelled' }
+    ])('$action updates status from $initialStatus to $expectedStatus', ({ initialStatus, action, expectedStatus }) => {
+        const order = new Order(1);
+        order.status = initialStatus;
+        if ((action === 'pay' && ['paid','completed','cancelled'].includes(initialStatus)) ||
+            (action === 'complete' && initialStatus !== 'paid') ||
+            (action === 'cancel' && initialStatus === 'completed')) {
+            expect(() => order[action]()).toThrow();
+        } else {
+            order[action]();
+            expect(order.status).toBe(expectedStatus);
+        }
+    });
+});
